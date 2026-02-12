@@ -1,0 +1,43 @@
+# File: .github/workflows/docker-deploy-template.yml tại repo ".github"
+name: Reusable Docker Deploy
+
+on:
+  workflow_call:
+    # Định nghĩa các biến đầu vào để mỗi dự án truyền vào khác nhau
+    inputs:
+      vps_path:
+        required: true
+        type: string
+      image_name:
+        required: true
+        type: string
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Login GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Build & Push
+        run: |
+          docker build -t ghcr.io/${{ github.repository_owner }}/${{ inputs.image_name }}:latest .
+          docker push ghcr.io/${{ github.repository_owner }}/${{ inputs.image_name }}:latest
+
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd ${{ inputs.vps_path }}
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker compose pull
+            docker compose up -d --force-recreate --remove-orphans
+            docker image prune -f
