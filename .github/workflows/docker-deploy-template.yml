@@ -3,6 +3,14 @@ name: Standard Reusable Deploy
 # Template này được gọi bởi các dự án con (Bot 1, Bot 2...)
 on:
   workflow_call:
+    # Khai báo các secret mà template này cần nhận từ dự án con
+    secrets:
+      SSH_HOST:
+        required: true
+      SSH_USER:
+        required: true
+      SSH_KEY:
+        required: true
 
 jobs:
   build-and-deploy:
